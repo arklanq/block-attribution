@@ -1,0 +1,19 @@
+{
+  "name": "block-attribution",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.8.1",
+    "jsonc-parser": "3.3.1"
+  }
+}
