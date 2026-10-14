@@ -44,19 +44,30 @@ Hooks reject; they never rewrite text silently. The block message names the offe
   - Claude Desktop: `/Applications/Claude.app` or `~/Applications/Claude.app`; shares `~/.claude`.
   - Codex CLI: `codex` on PATH or `${CODEX_HOME:-~/.codex}` exists.
   - Codex desktop: `ChatGPT.app` with bundle id `com.openai.codex` (or `Codex.app`); shares `~/.codex`.
-- **Writes**: `jsonc-parser` edits that keep formatting, atomic temp + rename, timestamped backup before the first change, refuse to edit files that don't parse. Codex trust hashes computed with the verified generic formula. Hooks appended, never inserted, so existing Codex trust keys keep their indexes.
-- **Git**: set global `core.hooksPath` only when unset; if set, install into that directory only with consent; never overwrite an existing hook file. Warn about repos with their own `core.hooksPath`.
-- **Manifest** (`~/.block-attribution/manifest.json`): what was changed and the previous values, so uninstall restores exactly; fallback pattern matching for entries without a manifest.
+- **Writes**: `jsonc-parser` edits that keep formatting, atomic temp + rename, timestamped backup in `backups/` before the first change, refuse to edit files that don't parse. Codex trust hashes computed with the verified generic formula. Hooks appended, never inserted, so existing Codex trust keys keep their indexes.
+- **Git**: the wizard asks whether to install global git hooks (`commit-msg`, `pre-push`); recommended answer: yes. Set global `core.hooksPath` to `git-hooks/` only when unset; if set, install into that directory only with consent; never overwrite an existing hook file. Warn about repos with their own `core.hooksPath`.
+- **Manifest** (`manifest.json`): what was changed and the previous values, so uninstall restores exactly; fallback pattern matching for entries without a manifest.
+- **Git instructions**: an opt-in wizard step asks whether to remove Claude Code's built-in commit and PR workflow instructions by writing `includeGitInstructions: false` (the settings equivalent of `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`). Recommended answer: no; suggested only for users with their own git workflow skills, because it also removes the git status snapshot.
 - **Interactive mode**: reads from the terminal device when launched via `curl | bash`; prompts time out to defaults.
 - **Non-interactive mode**: flags or saved answers only; fails clearly when a required choice is missing.
 - **Dry-run**: every write goes through one operation list that dry-run prints as a diff.
+
+## Files
+
+Everything Block Attribution owns lives in `~/.config/block-attribution/` (`$XDG_CONFIG_HOME/block-attribution` when set):
+
+- `bin/block-attribution`: the binary; hooks call it by absolute path.
+- `git-hooks/`: global git hooks.
+- `config.json`: saved wizard answers and extra patterns.
+- `manifest.json`: changes made, for uninstall.
+- `backups/`: timestamped copies of edited agent config files.
 
 ## Codex account setting
 
 Codex attribution is a server-side account setting. The installer cannot change it; it explains where to turn it off, and the hooks block it either way.
 
-## Open decisions
+## Decisions
 
-1. Global git hooks on by default?
-2. Windows support in v1?
-3. `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS` on by default? It also removes the git status snapshot.
+1. Global git hooks: the wizard asks, recommended yes.
+2. Windows: not in v1; macOS and Linux only.
+3. Removing Claude Code git instructions: opt-in wizard step, recommended no.
