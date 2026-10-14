@@ -94,6 +94,19 @@ describe("install and uninstall", () => {
     expect(plan.operations.some((operation) => operation.kind === "run")).toBe(false);
   });
 
+  test("uninstall deletes agent files that the installer created", async () => {
+    const { home, binary, environment } = setup();
+    for (const file of [".claude/settings.json", ".codex/hooks.json", ".codex/config.toml"]) {
+      spawnSync("rm", [join(home, file)]);
+    }
+    await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);
+    expect(existsSync(join(home, ".codex", "config.toml"))).toBe(true);
+    await executeOperations(planUninstall({ environment }).operations);
+    for (const file of [".claude/settings.json", ".codex/hooks.json", ".codex/config.toml"]) {
+      expect(existsSync(join(home, file))).toBe(false);
+    }
+  });
+
   test("dropping an agent on reinstall removes its changes", async () => {
     const { home, binary, environment } = setup();
     await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);

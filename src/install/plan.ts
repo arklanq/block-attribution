@@ -31,6 +31,7 @@ export type Manifest = {
   version: 1;
   claude?: {
     settingsPath: string;
+    settingsExisted: boolean;
     previous: { attribution: Previous; includeGitInstructions?: Previous };
     written: { attribution: unknown; includeGitInstructions?: unknown };
   };
@@ -38,6 +39,7 @@ export type Manifest = {
     hooksPath: string;
     hooksFileExisted: boolean;
     configPath: string;
+    configFileExisted: boolean;
     trustKeys: string[];
     hooksFeatureWasDisabled: boolean;
   };
@@ -199,7 +201,7 @@ function planClaudeInstall(
   text = upsertManagedGroup(text, path, "Stop", groups.stop).text;
 
   writeWithBackup(operations, environment, now, path, before, text, "claude-settings.json", "Configure Claude Code (attribution off, hooks)");
-  return { settingsPath: path, previous, written };
+  return { settingsPath: path, settingsExisted: manifest?.claude?.settingsExisted ?? before !== undefined, previous, written };
 }
 
 function planClaudeUninstall(operations: Operation[], environment: Environment, now: Date, manifest: Manifest | undefined, notes: string[]): void {
@@ -222,6 +224,10 @@ function planClaudeUninstall(operations: Operation[], environment: Environment, 
     }
   } else {
     notes.push("No install record was found, so Claude Code's attribution setting was left as it is.");
+  }
+  if (claude?.settingsExisted === false && Object.keys(parseJsonObject(text, path)).length === 0) {
+    operations.push({ kind: "delete", path, description: "Remove the Claude Code settings file Block Attribution created" });
+    return;
   }
   writeWithBackup(operations, environment, now, path, before, text, "claude-settings.json", "Remove Block Attribution from Claude Code");
 }
@@ -281,6 +287,7 @@ function planCodexInstall(
     hooksPath,
     hooksFileExisted: manifest?.codex?.hooksFileExisted ?? hooksBefore !== undefined,
     configPath,
+    configFileExisted: manifest?.codex?.configFileExisted ?? configBefore !== undefined,
     trustKeys,
     hooksFeatureWasDisabled,
   };
@@ -331,7 +338,9 @@ function planCodexUninstall(operations: Operation[], environment: Environment, n
   } else {
     writeWithBackup(operations, environment, now, hooksPath, hooksBefore, hooksText, "codex-hooks.json", "Remove Block Attribution hooks from Codex");
   }
-  if (configBefore !== undefined) {
+  if (configBefore !== undefined && manifest?.codex?.configFileExisted === false && configText.trim() === "") {
+    operations.push({ kind: "delete", path: configPath, description: "Remove the Codex config file Block Attribution created" });
+  } else if (configBefore !== undefined) {
     writeWithBackup(operations, environment, now, configPath, configBefore, configText, "codex-config.toml", "Remove Block Attribution hook trust from Codex");
   }
 }
@@ -361,7 +370,7 @@ function planGitInstall(operations: Operation[], environment: Environment, binar
         mode: 0o755,
         ...(before !== undefined ? { previous: before } : {}),
         ...(name === "commit-msg" || name === "pre-push" ? {} : { showDiff: false }),
-        description: `Install git hook ${name}`,
+        description: `Install the git hooks in ${paths.gitHooksDir}`,
       });
     }
   }

@@ -100,12 +100,19 @@ function savedAnswers(environment: Environment): Partial<InstallChoices> {
   }
 }
 
+/** One line per step; several files written by the same step are listed once. */
+function summarize(plan: Plan): string[] {
+  return [...new Set(plan.operations.map((operation) => operation.description))];
+}
+
 function printPlan(plan: Plan, dryRun: boolean): void {
   if (plan.operations.length === 0) {
     console.log("Nothing to change.");
   }
-  for (const operation of plan.operations) {
-    console.log(`${dryRun ? "Would" : "Will"}: ${describeOperation(operation, dryRun)}`);
+  if (dryRun) {
+    plan.operations.forEach((operation) => console.log(`Would: ${describeOperation(operation, true)}`));
+  } else {
+    summarize(plan).forEach((line) => console.log(`- ${line}`));
   }
   plan.warnings.forEach((warning) => console.log(`Warning: ${warning}`));
 }
@@ -187,7 +194,7 @@ async function install(flags: Flags): Promise<void> {
   }
 
   if (interactive) {
-    note(plan.operations.map((operation) => describeOperation(operation, false)).join("\n") || "Nothing to change.", "Changes");
+    note(summarize(plan).join("\n") || "Nothing to change.", "Changes");
     plan.warnings.forEach((warning) => log.warn(warning));
     if (plan.operations.length > 0 && !exitIfCancelled(await confirm({ message: "Apply these changes?", initialValue: true }))) {
       cancel("Nothing was changed.");
