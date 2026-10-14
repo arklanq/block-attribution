@@ -18,8 +18,6 @@ Options:
   --skip-claude                 Do not configure Claude Code.
   --skip-codex                  Do not configure Codex.
   --git-hooks, --no-git-hooks   Install global git hooks (default: yes).
-  --remove-git-instructions, --keep-git-instructions
-                                Remove Claude Code's built-in commit and PR instructions (default: keep).
   -h, --help                    Show this help.
 USAGE
 }
@@ -38,7 +36,7 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
-    --dry-run|--yes|--non-interactive|--skip-claude|--skip-codex|--git-hooks|--no-git-hooks|--remove-git-instructions|--keep-git-instructions)
+    --dry-run|--yes|--non-interactive|--skip-claude|--skip-codex|--git-hooks|--no-git-hooks)
       installer_args+=("$1")
       shift
       ;;

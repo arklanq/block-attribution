@@ -47,7 +47,6 @@ Hooks reject; they never rewrite text silently. The block message names the offe
 - **Writes**: `jsonc-parser` edits that keep formatting, atomic temp + rename, timestamped backup in `backups/` before each change, refuse to edit files that don't parse. Codex trust hashes computed with the verified generic formula. Hooks appended, never inserted, so existing Codex trust keys keep their indexes.
 - **Git**: the wizard asks whether to install global git hooks (`commit-msg`, `pre-push`); recommended answer: yes. Set global `core.hooksPath` to `git-hooks/` only when unset; when it points elsewhere, skip the git hooks with a warning.
 - **Manifest** (`manifest.json`): what was changed and the previous values, so uninstall restores exactly; fallback pattern matching for entries without a manifest.
-- **Git instructions**: an opt-in wizard step asks whether to remove Claude Code's built-in commit and PR workflow instructions by writing `includeGitInstructions: false` (the settings equivalent of `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`). Recommended answer: no; suggested only for users with their own git workflow skills, because it also removes the git status snapshot.
 - **Interactive mode**: reads from the terminal device when launched via `curl | bash`.
 - **Non-interactive mode**: flags or saved answers only; fails clearly when a required choice is missing.
 - **Dry-run**: every write goes through one operation list that dry-run prints as a diff.
@@ -69,4 +68,4 @@ Codex attribution is a server-side account setting. The installer cannot change 
 
 1. Global git hooks: the wizard asks, recommended yes.
 2. Windows: not in v1; macOS and Linux only.
-3. Removing Claude Code git instructions: opt-in wizard step, recommended no.
+3. Claude Code's built-in git instructions are left alone. Their attribution lines come from the `attribution` settings, which the installer already empties; the rest are safety rules, such as never skipping hooks, that support Block Attribution.

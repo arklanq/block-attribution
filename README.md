@@ -18,7 +18,6 @@ The script downloads the executable for your platform from GitHub Releases, veri
 
 1. Which agents to configure.
 2. Whether to install global git hooks (recommended).
-3. Whether to remove Claude Code's built-in commit and PR instructions. Only recommended if you use your own git workflow skills, because it also removes the git status snapshot Claude gets at the start of a session.
 
 Preview the changes, or install without questions:
 
@@ -39,7 +38,7 @@ block-attribution uninstall
 
 | Where | Change |
 | :- | :- |
-| `~/.claude/settings.json` | `attribution` set to `{ "commit": "", "pr": "", "sessionUrl": false }`; `PreToolUse` and `Stop` hooks; optionally `includeGitInstructions: false` |
+| `~/.claude/settings.json` | `attribution` set to `{ "commit": "", "pr": "", "sessionUrl": false }`; `PreToolUse` and `Stop` hooks |
 | `~/.codex/hooks.json` | `PreToolUse` and `Stop` hooks, appended after your own hooks |
 | `~/.codex/config.toml` | Trust entries for those two hooks, so Codex runs them without asking |
 | Global git config | `core.hooksPath` pointing at `~/.config/block-attribution/git-hooks`, only when it is not set already |

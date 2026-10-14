@@ -52,7 +52,6 @@ Edit `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`). Create i
 
 - If `hooks.PreToolUse` or `hooks.Stop` already exist, add the entries above to the end of those arrays.
 - The single quotes keep a path with spaces together. On a system whose shell doesn't accept them, use the quoting that shell needs.
-- Optional: add `"includeGitInstructions": false` to remove Claude Code's built-in commit and PR instructions. Only do this if you use your own git workflow skills, because it also removes the git status snapshot.
 
 Claude Code applies settings changes without a restart, but start a new session to be sure the hooks are loaded.
 
@@ -175,7 +174,7 @@ The commit is rejected with "Block Attribution: the commit message contains AI a
 
 Undo only the steps you did.
 
-1. **Claude Code**: in `~/.claude/settings.json`, remove the `PreToolUse` and `Stop` entries whose command contains `block-attribution`, and delete `PreToolUse` or `Stop` if the array is empty. Remove `attribution` (or set your previous value) and `includeGitInstructions` if you added it.
+1. **Claude Code**: in `~/.claude/settings.json`, remove the `PreToolUse` and `Stop` entries whose command contains `block-attribution`, and delete `PreToolUse` or `Stop` if the array is empty. Remove `attribution`, or set it back to your previous value.
 2. **Codex**: in `~/.codex/hooks.json`, remove the two entries whose command contains `block-attribution`. Their approvals in `~/.codex/config.toml` are tables named like `[hooks.state."/home/me/.codex/hooks.json:stop:1:0"]`; delete the two that belong to the removed entries. If you removed entries that were not last in their array, open `/hooks` in Codex afterwards and approve the hooks it asks about again.
 3. **Other agents**: remove the hooks you added.
 4. **Git**: if you created the hooks directory, run `git config --global --unset core.hooksPath` and delete the directory. If you added the scripts to an existing hooks directory, delete just those files.

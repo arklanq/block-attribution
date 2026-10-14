@@ -26,8 +26,6 @@ Install options:
   --skip-codex                Do not configure Codex.
   --git-hooks / --no-git-hooks
                               Install global git hooks (default: yes).
-  --remove-git-instructions / --keep-git-instructions
-                              Remove Claude Code's built-in commit and PR instructions (default: keep).
   --binary <path>             Executable to install (defaults to this executable).
 
 Uninstall options:
@@ -38,7 +36,6 @@ type Flags = {
   yes: boolean;
   skip: Set<AgentName>;
   gitHooks?: boolean;
-  removeGitInstructions?: boolean;
   binary?: string;
 };
 
@@ -68,10 +65,6 @@ function parseFlags(args: string[]): Flags {
       case "--git-hooks":
       case "--no-git-hooks":
         flags.gitHooks = arg === "--git-hooks";
-        break;
-      case "--remove-git-instructions":
-      case "--keep-git-instructions":
-        flags.removeGitInstructions = arg === "--remove-git-instructions";
         break;
       case "--binary":
         flags.binary = args[index + 1] ?? fail("--binary requires a path.");
@@ -167,7 +160,6 @@ async function install(flags: Flags): Promise<void> {
   let choices: InstallChoices = {
     agents: found,
     gitHooks: flags.gitHooks ?? saved.gitHooks ?? true,
-    removeGitInstructions: flags.removeGitInstructions ?? saved.removeGitInstructions ?? false,
   };
 
   if (interactive) {
@@ -193,18 +185,7 @@ async function install(flags: Flags): Promise<void> {
           initialValue: saved.gitHooks ?? true,
         }),
       );
-    const removeGitInstructions =
-      !agents.includes("claude")
-        ? false
-        : (flags.removeGitInstructions ??
-          exitIfCancelled(
-            await confirm({
-              message:
-                "Remove Claude Code's built-in commit and PR instructions? Only recommended if you use your own git workflow skills; it also removes the git status snapshot.",
-              initialValue: saved.removeGitInstructions ?? false,
-            }),
-          ));
-    choices = { agents, gitHooks, removeGitInstructions };
+    choices = { agents, gitHooks };
   }
 
   const plan = planInstall({ environment, binarySource: selfExecutable(flags) }, choices);

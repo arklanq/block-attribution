@@ -39,7 +39,7 @@ function setup() {
   return { home, binary, environment };
 }
 
-const ALL: InstallChoices = { agents: ["claude", "codex"], gitHooks: true, removeGitInstructions: true };
+const ALL: InstallChoices = { agents: ["claude", "codex"], gitHooks: true };
 
 function read(path: string): string {
   return readFileSync(path, "utf8");
@@ -53,7 +53,7 @@ describe("install and uninstall", () => {
 
     const settings = JSON.parse(read(join(home, ".claude", "settings.json")));
     expect(settings.attribution).toEqual({ commit: "", pr: "", sessionUrl: false });
-    expect(settings.includeGitInstructions).toBe(false);
+    expect(settings.includeGitInstructions).toBeUndefined();
     expect(settings.hooks.PreToolUse[0].hooks[0].command).toContain("block-attribution' hook pre-tool-use");
     expect(settings.permissions).toEqual({ defaultMode: "acceptEdits" });
 

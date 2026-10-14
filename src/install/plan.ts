@@ -22,7 +22,6 @@ import type { Operation } from "./operations.ts";
 export type InstallChoices = {
   agents: AgentName[];
   gitHooks: boolean;
-  removeGitInstructions: boolean;
 };
 
 type Previous = { present: false } | { present: true; value: unknown };
@@ -32,8 +31,8 @@ export type Manifest = {
   claude?: {
     settingsPath: string;
     settingsExisted: boolean;
-    previous: { attribution: Previous; includeGitInstructions?: Previous };
-    written: { attribution: unknown; includeGitInstructions?: unknown };
+    previous: { attribution: Previous };
+    written: { attribution: unknown };
   };
   codex?: {
     hooksPath: string;
@@ -163,7 +162,6 @@ export function globalHooksPath(environment: Environment): string | undefined {
 function planClaudeInstall(
   operations: Operation[],
   context: Required<Pick<PlanContext, "environment" | "now">>,
-  choices: InstallChoices,
   binary: string,
   manifest: Manifest | undefined,
 ): Manifest["claude"] {
@@ -183,19 +181,7 @@ function planClaudeInstall(
     text = setJsonValue(text, ["attribution"], CLAUDE_ATTRIBUTION);
   }
 
-  const written: NonNullable<Manifest["claude"]>["written"] = { attribution: writtenAttribution };
-  if (choices.removeGitInstructions) {
-    previous.includeGitInstructions ??= previousOf(current, "includeGitInstructions");
-    if (current.includeGitInstructions !== false) {
-      text = setJsonValue(text, ["includeGitInstructions"], false);
-    }
-    written.includeGitInstructions = false;
-  } else if (previous.includeGitInstructions && manifest?.claude?.written.includeGitInstructions === false) {
-    if (current.includeGitInstructions === false) {
-      text = restoreValue(text, "includeGitInstructions", previous.includeGitInstructions);
-    }
-    delete previous.includeGitInstructions;
-  }
+  const written = { attribution: writtenAttribution };
 
   text = upsertManagedGroup(text, path, "PreToolUse", groups.preToolUse).text;
   text = upsertManagedGroup(text, path, "Stop", groups.stop).text;
@@ -218,9 +204,6 @@ function planClaudeUninstall(operations: Operation[], environment: Environment, 
   if (claude) {
     if (jsonEqual(current.attribution, claude.written.attribution)) {
       text = restoreValue(text, "attribution", claude.previous.attribution);
-    }
-    if (claude.previous.includeGitInstructions && jsonEqual(current.includeGitInstructions, claude.written.includeGitInstructions)) {
-      text = restoreValue(text, "includeGitInstructions", claude.previous.includeGitInstructions);
     }
   } else {
     notes.push("No install record was found, so Claude Code's attribution setting was left as it is.");
@@ -429,7 +412,7 @@ export function planInstall(context: PlanContext, choices: InstallChoices): Plan
 
   const next: Manifest = { version: 1 };
   if (choices.agents.includes("claude")) {
-    next.claude = planClaudeInstall(operations, full, choices, paths.binary, manifest);
+    next.claude = planClaudeInstall(operations, full, paths.binary, manifest);
   } else if (manifest?.claude) {
     planClaudeUninstall(operations, environment, now, manifest, notes);
   }
