@@ -23,7 +23,7 @@ type HookInput = {
 };
 
 const FIX_HINT =
-  "The user does not want AI attribution in commits or pull requests. Remove the lines listed above and retry. Do not try to bypass this check.";
+  "The user does not want AI attribution in commits or pull requests. Fix the problems listed above and retry. Do not try to bypass this check.";
 
 export function runPreToolUse(input: HookInput, patterns: readonly RegExp[]): HookResult {
   const toolName = input.tool_name ?? "";
