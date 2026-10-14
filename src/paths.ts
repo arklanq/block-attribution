@@ -37,8 +37,6 @@ export function appPaths(environment: Environment) {
     root,
     binDir: binDir(environment),
     binary: join(binDir(environment), BINARY_NAME),
-    /** Where earlier builds installed the executable; removed on install. */
-    legacyBinDir: join(root, "bin"),
     gitHooksDir: join(root, "git-hooks"),
     config: join(root, "config.json"),
     manifest: join(root, "manifest.json"),

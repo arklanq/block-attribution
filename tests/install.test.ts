@@ -108,21 +108,6 @@ describe("install and uninstall", () => {
     }
   });
 
-  test("moves an executable installed by an earlier build and repoints the hooks", async () => {
-    const { home, binary, environment } = setup();
-    await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);
-    const legacy = join(home, ".config", "block-attribution", "bin");
-    mkdirSync(legacy);
-    writeFileSync(join(legacy, "block-attribution"), "old");
-    const settingsPath = join(home, ".claude", "settings.json");
-    writeFileSync(settingsPath, read(settingsPath).replaceAll(join(home, ".local", "bin"), legacy));
-
-    await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);
-    expect(existsSync(legacy)).toBe(false);
-    expect(read(settingsPath)).not.toContain(legacy);
-    expect(JSON.parse(read(settingsPath)).hooks.Stop).toHaveLength(1);
-  });
-
   test("dropping an agent on reinstall removes its changes", async () => {
     const { home, binary, environment } = setup();
     await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);

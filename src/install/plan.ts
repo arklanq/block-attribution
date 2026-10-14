@@ -426,9 +426,6 @@ export function planInstall(context: PlanContext, choices: InstallChoices): Plan
   } else if (!binaryContent && !installedBinary) {
     throw new Error("The block-attribution executable is missing. Run the installer from a release build.");
   }
-  if (existsSync(paths.legacyBinDir)) {
-    operations.push({ kind: "delete", path: paths.legacyBinDir, recursive: true, description: "Remove the executable from its old location" });
-  }
 
   const next: Manifest = { version: 1 };
   if (choices.agents.includes("claude")) {
@@ -484,7 +481,6 @@ export function planUninstall(context: PlanContext): Plan {
 
   for (const [path, description, recursive] of [
     [paths.binary, "Remove the executable", false],
-    [paths.legacyBinDir, "Remove the executable from its old location", true],
     [paths.config, "Remove saved answers", false],
     [paths.manifest, "Remove the install record", false],
   ] as const) {
