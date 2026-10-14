@@ -32,6 +32,8 @@ PR [arklanq/research-canvas#1](https://github.com/arklanq/research-canvas/pull/1
 | The hook input carries `tool_name`, `tool_input.command`, `permission_mode` | Verified (test + docs) | Hook log; [hooks](https://code.claude.com/docs/en/hooks) |
 | JSON `permissionDecision: "deny"` also blocks | Verified (docs) | hooks reference |
 | `Stop` hook with `decision: "block"` + `reason` (or exit 2) makes Claude continue; `stop_hook_active` guards loops; capped at 8 continuations | Verified (docs) | hooks reference, Stop section |
+| The built `block-attribution hook pre-tool-use` blocks, in Claude Desktop (auto mode): a trailer in `-m`, a trailer in a heredoc message, a `-F` file after `cd`, `--no-verify`, and `gh pr create --body` with "Generated with [Claude Code]"; a clean commit passes | Verified (test) | Temporary project hook pointing at the release build, 2026-10-14. |
+| Removing a project settings file (with its `.claude` folder) did not unload its hooks in the running session; overwriting it with `{}` did | Verified (test) | Observed while cleaning up the tests above. Users should start a new session after uninstalling. |
 | `claude -p` cannot be used for end-to-end tests on this machine | Verified (test) | The CLI is logged in with an API key without credit ("Credit balance is too low"). Tests ran inside the Desktop session instead. |
 
 ## Codex
@@ -49,6 +51,8 @@ Source: `openai/codex` tag `rust-v0.162.1` (commit 092d3acd). Paths are relative
 | The desktop app's own Commit button follows the server setting, and falls back to `codex_git_commit` + `commit_attribution` in `config.toml` only when the server value is missing | Verified (source) | `ChatGPT.app` `app.asar` |
 | The desktop app makes internal snapshot commits with `git commit-tree … -m "Co-authored-by: Codex"` regardless of settings | Verified (source) | `app.asar`. `commit-tree` runs no git hooks, so only a `pre-push` hook can catch these if they ever reach a pushed branch. |
 | The desktop app uses `~/.codex` (config, hooks, sessions) like the CLI | Verified (test) | The running app-server has no `CODEX_HOME`, holds files in `~/.codex`, and `config.toml` contains its `[desktop]` section. |
+| Trust entries written by the installer are accepted | Verified (test) | `codex app-server` `hooks/list` on a temporary `CODEX_HOME` after install reported both Block Attribution hooks as `"trustStatus": "trusted"`. |
+| The built `block-attribution hook pre-tool-use` blocks a real Codex commit with a trailer, and the model then commits without it | Verified (test) | `codex exec` 0.162.1 with the hook passed inline: `Command blocked by PreToolUse hook: Block Attribution stopped this command…`, then commit `chore: add b` without a trailer. |
 | Hooks run in desktop sessions | Unverified | The app-server is the same core and the app manages hook trust, but no hook firing was observed in a desktop session yet. |
 | `hooks.json` schema, events (`PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`, …) and locations (`$CODEX_HOME/hooks.json`, inline `[hooks]`, trusted `<repo>/.codex/hooks.json`) | Verified (source + docs) | `config/src/hook_config.rs`; [Codex hooks docs](https://learn.chatgpt.com/docs/hooks) |
 | Shell commands reach `PreToolUse` as `tool_name: "Bash"`, `tool_input.command`; MCP tools as `mcp__<server>__<tool>` | Verified (source + test) | `core/src/tools/handlers/unified_exec/exec_command.rs:514-524`; hook log from `codex exec` |
@@ -65,6 +69,7 @@ Source: `openai/codex` tag `rust-v0.162.1` (commit 092d3acd). Paths are relative
 | `git commit --no-verify` skips it | Verified (test) | Commit with the trailer succeeded. The agent hooks must block `--no-verify` / `-n`. |
 | A repository-local `core.hooksPath` (husky, lefthook) replaces the global one | Verified (test) | With `core.hooksPath=.husky` the attributed commit succeeded. |
 | With a global `core.hooksPath`, the repository's own `.git/hooks/*` stop running | Verified (test) | A `.git/hooks/pre-commit` did not run. The installed hooks must chain to `$(git rev-parse --git-dir)/hooks/<name>`. |
+| The installed hooks reject an attributed commit, still run the repository's own `pre-commit`, and `pre-push` rejects a commit made with `--no-verify` | Verified (test) | Temporary home with `GIT_CONFIG_GLOBAL`, release build, 2026-10-14; also covered by `tests/git-hooks.test.ts`. |
 | User's global `core.hooksPath` is currently unset | Verified (test) | `git config --global --get core.hooksPath` printed nothing. |
 | A `PreToolUse` regex on the command string cannot see messages passed through files or heredocs | Verified (by construction) | `git commit -F file` carried the trailer past the command-string check; only `commit-msg` caught it. |
 

@@ -1,6 +1,6 @@
-# Architecture (proposal)
+# Architecture
 
-Status: draft for review. Facts behind each decision are in [verification.md](verification.md).
+Status: implemented in v1 (macOS and Linux). Facts behind each decision are in [verification.md](verification.md).
 
 ## Goal
 
@@ -13,7 +13,7 @@ One command installs protection that keeps AI attribution out of commits and pul
 | 1 | Agent settings | Claude Code built-in commit trailer, PR line, session link (CLI and Desktop) | Projects harness instruction, Codex (no local key), prompt-level instructions |
 | 2 | Agent `PreToolUse` hook (Claude Code and Codex, CLI and Desktop) | Shell commands `git commit`, `gh pr create/edit`, `gh api` PR calls, GitHub MCP tools; blocks `--no-verify`, `-n`, `-c core.hooksPath=…`; reads files given with `-F`/`--file`/`--body-file` | Text built indirectly (scripts, variables) |
 | 3 | Global git hooks (`commit-msg`, `pre-push`) | Every commit from any tool, including the Codex desktop Commit button; `pre-push` also catches `commit-tree` snapshots | Repos with their own `core.hooksPath`; `--no-verify` outside agents |
-| 4 | Agent `Stop` hook | Last line of defense: checks `HEAD` message and the current branch's open PR body, makes the agent fix them before ending the turn | Only runs when a turn ends; needs `gh` for PR checks |
+| 4 | Agent `Stop` hook | Last line of defense: checks unpushed commits from the last 12 hours and the current branch's open PR, makes the agent fix them before ending the turn | Only runs when a turn ends; needs `gh` for PR checks; skipped when `stop_hook_active` is set |
 
 Not covered locally: Claude cloud sessions, server or GitHub App additions, PRs from the web UI. A GitHub Action check could cover these later.
 
@@ -29,26 +29,26 @@ Hooks reject; they never rewrite text silently. The block message names the offe
 
 ## Components
 
-- **`install.sh`** (and later `install.ps1`): downloads the release binary for the platform, verifies SHA-256, replaces atomically, runs `block-attribution install`. Pattern from Zeus and Plannotator.
+- **`install.sh`**: downloads the release binary for the platform, verifies SHA-256, runs `block-attribution install`, which copies itself into `bin/`. Pattern from Zeus.
 - **`block-attribution` binary** (Bun, compiled per platform):
   - `install` / `uninstall`: wizard, `--dry-run`, `--non-interactive` (`--yes`), per-agent `--skip-*` flags.
-  - `hook <agent> <event>`: entry point for agent hooks; reads stdin JSON, prints the agent-specific block response.
-  - `git-hook <name>`: entry point for git hooks; chains to the repository's own `.git/hooks/<name>`.
-  - `check [--commit <rev>] [--pr <n>]`: manual check, also used by the Stop hook.
-  - `status`: what is installed and what each agent would see.
+  - `hook <pre-tool-use|stop>`: entry point for agent hooks; reads stdin JSON. Both agents accept the same responses: exit 2 with the reason on stderr blocks a tool call, `{"decision":"block","reason":…}` keeps a turn going.
+  - `git-hook <commit-msg|pre-push>`: checks called by the git hook scripts. The scripts themselves are plain shell and chain to the repository's own `.git/hooks/<name>` for every hook name.
+  - `check`: the Stop hook's checks, run by hand in a repository.
+  - `status`: detected agents and what is installed.
 
 ## Installer behaviour
 
 - **Detection** (three states per target: not found, found and skipped, configured):
-  - Claude Code CLI: `claude` on PATH or `${CLAUDE_CONFIG_DIR:-~/.claude}` exists; version from `claude --version` decides between `attribution: false` (≥ 2.1.281) and the three sub-keys.
-  - Claude Desktop: `/Applications/Claude.app` or `~/Applications/Claude.app`; shares `~/.claude`.
+  - Claude Code CLI: `claude` on PATH or `${CLAUDE_CONFIG_DIR:-~/.claude}` exists. The installer always writes the three `attribution` sub-keys, because the CLI and the Desktop app may run different versions and versions before 2.1.281 reject `attribution: false`.
+  - Claude Desktop: `Claude.app` with bundle id `com.anthropic.claudefordesktop` in `/Applications` or `~/Applications`; shares `~/.claude`.
   - Codex CLI: `codex` on PATH or `${CODEX_HOME:-~/.codex}` exists.
   - Codex desktop: `ChatGPT.app` with bundle id `com.openai.codex` (or `Codex.app`); shares `~/.codex`.
-- **Writes**: `jsonc-parser` edits that keep formatting, atomic temp + rename, timestamped backup in `backups/` before the first change, refuse to edit files that don't parse. Codex trust hashes computed with the verified generic formula. Hooks appended, never inserted, so existing Codex trust keys keep their indexes.
-- **Git**: the wizard asks whether to install global git hooks (`commit-msg`, `pre-push`); recommended answer: yes. Set global `core.hooksPath` to `git-hooks/` only when unset; if set, install into that directory only with consent; never overwrite an existing hook file. Warn about repos with their own `core.hooksPath`.
+- **Writes**: `jsonc-parser` edits that keep formatting, atomic temp + rename, timestamped backup in `backups/` before each change, refuse to edit files that don't parse. Codex trust hashes computed with the verified generic formula. Hooks appended, never inserted, so existing Codex trust keys keep their indexes.
+- **Git**: the wizard asks whether to install global git hooks (`commit-msg`, `pre-push`); recommended answer: yes. Set global `core.hooksPath` to `git-hooks/` only when unset; when it points elsewhere, skip the git hooks with a warning.
 - **Manifest** (`manifest.json`): what was changed and the previous values, so uninstall restores exactly; fallback pattern matching for entries without a manifest.
 - **Git instructions**: an opt-in wizard step asks whether to remove Claude Code's built-in commit and PR workflow instructions by writing `includeGitInstructions: false` (the settings equivalent of `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`). Recommended answer: no; suggested only for users with their own git workflow skills, because it also removes the git status snapshot.
-- **Interactive mode**: reads from the terminal device when launched via `curl | bash`; prompts time out to defaults.
+- **Interactive mode**: reads from the terminal device when launched via `curl | bash`.
 - **Non-interactive mode**: flags or saved answers only; fails clearly when a required choice is missing.
 - **Dry-run**: every write goes through one operation list that dry-run prints as a diff.
 
