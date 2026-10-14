@@ -6,7 +6,7 @@ It turns attribution off in Claude Code, and installs hooks that reject a commit
 
 ## Installation
 
-On macOS or Linux:
+On macOS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arklanq/block-attribution/main/install.sh | bash
@@ -32,6 +32,8 @@ Remove everything it changed:
 ```bash
 block-attribution uninstall
 ```
+
+On other systems, or if the installer fails, follow the [manual installation](docs/manual-installation.md) guide. It also covers manual uninstallation.
 
 ## What it changes
 
