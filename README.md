@@ -2,9 +2,11 @@
 
 Block Attribution keeps AI attribution out of your git commits and pull requests: `Co-authored-by` trailers, "Generated with Claude Code / Codex" lines, agent session links and Claude Projects markers.
 
-It turns attribution off in Claude Code, and installs hooks that reject a commit or pull request that still contains it, with a message that tells the agent what to remove. It works with Claude Code and Codex, in the terminal and in their desktop apps.
+It turns attribution off in Claude Code, and installs hooks that reject a commit or pull request that still contains it, with a message that tells the agent what to remove. It works with Claude Code and Codex, in the terminal and in their desktop apps, and other agents can be [connected by hand](MANUAL_INSTALLATION.md#4-other-agents).
 
 ## Installation
+
+The installer supports macOS with Claude Code and Codex. On other systems, with other AI agents, or if the installer fails, follow the [manual installation guide](MANUAL_INSTALLATION.md), which also covers uninstalling by hand.
 
 On macOS:
 
@@ -32,8 +34,6 @@ Remove everything it changed:
 ```bash
 block-attribution uninstall
 ```
-
-On other systems, or if the installer fails, follow the [manual installation](MANUAL_INSTALLATION.md) guide. It also covers manual uninstallation.
 
 ## What it changes
 
