@@ -33,7 +33,7 @@ Remove everything it changed:
 block-attribution uninstall
 ```
 
-On other systems, or if the installer fails, follow the [manual installation](docs/manual-installation.md) guide. It also covers manual uninstallation.
+On other systems, or if the installer fails, follow the [manual installation](MANUAL_INSTALLATION.md) guide. It also covers manual uninstallation.
 
 ## What it changes
 
