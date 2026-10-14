@@ -167,7 +167,8 @@ async function install(flags: Flags): Promise<void> {
       flags.gitHooks ??
       exitIfCancelled(
         await confirm({
-          message: "Install global git hooks that reject commits and pushes with AI attribution? (recommended)",
+          // A saved answer becomes the default, so the recommendation is only shown on the first run.
+          message: `Install global git hooks that reject commits and pushes with AI attribution?${saved.gitHooks === undefined ? " (recommended)" : ""}`,
           initialValue: saved.gitHooks ?? true,
         }),
       );
