@@ -29,7 +29,7 @@ Hooks reject; they never rewrite text silently. The block message names the offe
 
 ## Components
 
-- **`install.sh`**: downloads the release binary for the platform, verifies SHA-256, runs `block-attribution install`, which copies itself into `bin/`. Pattern from Zeus.
+- **`install.sh`**: downloads the release binary for the platform, verifies SHA-256, runs `block-attribution install`, which copies itself to `~/.local/bin`. Pattern from Zeus.
 - **`block-attribution` binary** (Bun, compiled per platform):
   - `install` / `uninstall`: wizard, `--dry-run`, `--non-interactive` (`--yes`), per-agent `--skip-*` flags.
   - `hook <pre-tool-use|stop>`: entry point for agent hooks; reads stdin JSON. Both agents accept the same responses: exit 2 with the reason on stderr blocks a tool call, `{"decision":"block","reason":…}` keeps a turn going.
@@ -54,9 +54,8 @@ Hooks reject; they never rewrite text silently. The block message names the offe
 
 ## Files
 
-Everything Block Attribution owns lives in `~/.config/block-attribution/` (`$XDG_CONFIG_HOME/block-attribution` when set):
+The executable is `~/.local/bin/block-attribution` (`$BLOCK_ATTRIBUTION_BIN_DIR` when set); hooks call it by absolute path, and the installer warns with the shell command to run when the directory is not in `PATH`. Everything else lives in `~/.config/block-attribution/` (`$XDG_CONFIG_HOME/block-attribution` when set):
 
-- `bin/block-attribution`: the binary; hooks call it by absolute path.
 - `git-hooks/`: global git hooks.
 - `config.json`: saved wizard answers and extra patterns.
 - `manifest.json`: changes made, for uninstall.

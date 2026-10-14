@@ -30,7 +30,7 @@ Without a terminal, or with `--yes`, the installer uses flags first, then your p
 Remove everything it changed:
 
 ```bash
-~/.config/block-attribution/bin/block-attribution uninstall
+block-attribution uninstall
 ```
 
 ## What it changes
@@ -41,7 +41,8 @@ Remove everything it changed:
 | `~/.codex/hooks.json` | `PreToolUse` and `Stop` hooks, appended after your own hooks |
 | `~/.codex/config.toml` | Trust entries for those two hooks, so Codex runs them without asking |
 | Global git config | `core.hooksPath` pointing at `~/.config/block-attribution/git-hooks`, only when it is not set already |
-| `~/.config/block-attribution/` | The executable, git hooks, saved answers, an install record and backups of every file it edited |
+| `~/.local/bin/block-attribution` | The executable (`BLOCK_ATTRIBUTION_BIN_DIR` changes the directory). The installer warns when the directory is not in `PATH`; the hooks call it by full path, so they work either way |
+| `~/.config/block-attribution/` | Git hooks, saved answers, an install record and backups of every file it edited |
 
 `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_CONFIG_HOME` are respected.
 

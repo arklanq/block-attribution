@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 import { cancel, confirm, intro, isCancel, log, multiselect, note, outro, spinner } from "@clack/prompts";
 
@@ -8,7 +9,7 @@ import { runHook, type HookEvent } from "./hook.ts";
 import { describeDetection, detectAgents, type AgentName } from "./install/detect.ts";
 import { describeOperation, executeOperations } from "./install/operations.ts";
 import { planInstall, planUninstall, readManifest, type InstallChoices, type Plan } from "./install/plan.ts";
-import { appPaths, defaultEnvironment, extraPatterns, readUserConfig, type Environment } from "./paths.ts";
+import { appPaths, defaultEnvironment, extraPatterns, isInPath, readUserConfig, type Environment } from "./paths.ts";
 
 const USAGE = `Usage: block-attribution <command> [options]
 
@@ -128,6 +129,26 @@ function finalNotes(plan: Plan, choices: InstallChoices): string[] {
   ];
 }
 
+/** Tells the user how to put the install directory in PATH; the hooks call the executable by full path either way. */
+function pathWarning(environment: Environment): string | undefined {
+  const dir = appPaths(environment).binDir;
+  if (isInPath(dir, environment)) {
+    return undefined;
+  }
+  const shown = dir.startsWith(`${environment.homeDir}/`) ? `$HOME${dir.slice(environment.homeDir.length)}` : dir;
+  const shell = basename(environment.env.SHELL ?? "");
+  const command =
+    shell === "fish"
+      ? `fish_add_path ${shown}`
+      : `echo 'export PATH="${shown}:$PATH"' >> ${shell === "bash" ? "~/.bashrc" : shell === "zsh" ? "~/.zshrc" : "<your shell profile>"}`;
+  return `${dir} is not in PATH, so block-attribution cannot be run by name. The hooks work without it. Add it with:\n  ${command}\nthen open a new terminal.`;
+}
+
+function uninstallCommand(environment: Environment): string {
+  const paths = appPaths(environment);
+  return isInPath(paths.binDir, environment) ? "block-attribution uninstall" : `${paths.binary} uninstall`;
+}
+
 function exitIfCancelled<T>(value: T): Exclude<T, symbol> {
   if (isCancel(value)) {
     cancel("Nothing was changed.");
@@ -191,6 +212,10 @@ async function install(flags: Flags): Promise<void> {
   if (flags.dryRun) {
     printPlan(plan, true);
     finalNotes(plan, choices).forEach((line) => console.log(`Note: ${line}`));
+    const warning = pathWarning(environment);
+    if (warning) {
+      console.log(`Warning: ${warning}`);
+    }
     return;
   }
 
@@ -206,14 +231,22 @@ async function install(flags: Flags): Promise<void> {
     await executeOperations(plan.operations);
     progress.stop("Changes applied");
     finalNotes(plan, choices).forEach((line) => log.info(line));
-    outro(`To uninstall: ${appPaths(environment).binary} uninstall`);
+    const warning = pathWarning(environment);
+    if (warning) {
+      log.warn(warning);
+    }
+    outro(`To uninstall: ${uninstallCommand(environment)}`);
     return;
   }
 
   printPlan(plan, false);
   await executeOperations(plan.operations);
   finalNotes(plan, choices).forEach((line) => console.log(`Note: ${line}`));
-  console.log(`Done. To uninstall: ${appPaths(environment).binary} uninstall`);
+  const warning = pathWarning(environment);
+  if (warning) {
+    console.log(`Warning: ${warning}`);
+  }
+  console.log(`Done. To uninstall: ${uninstallCommand(environment)}`);
 }
 
 async function uninstall(flags: Flags): Promise<void> {

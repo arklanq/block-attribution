@@ -34,7 +34,7 @@ function setup() {
   writeFileSync(binary, "#!/bin/sh\n");
   const environment: Environment = {
     homeDir: home,
-    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: undefined, CLAUDE_CONFIG_DIR: undefined, CODEX_HOME: undefined, GIT_CONFIG_GLOBAL: join(home, "gitconfig") },
+    env: { ...process.env, HOME: home, BLOCK_ATTRIBUTION_BIN_DIR: undefined, XDG_CONFIG_HOME: undefined, CLAUDE_CONFIG_DIR: undefined, CODEX_HOME: undefined, GIT_CONFIG_GLOBAL: join(home, "gitconfig") },
   };
   return { home, binary, environment };
 }
@@ -67,6 +67,7 @@ describe("install and uninstall", () => {
     const hooksPath = spawnSync("git", ["config", "--global", "--get", "core.hooksPath"], { env: environment.env as NodeJS.ProcessEnv, encoding: "utf8" });
     expect(hooksPath.stdout.trim()).toBe(join(home, ".config", "block-attribution", "git-hooks"));
     expect(existsSync(join(home, ".config", "block-attribution", "git-hooks", "commit-msg"))).toBe(true);
+    expect(settings.hooks.Stop[0].hooks[0].command).toBe(`'${join(home, ".local", "bin", "block-attribution")}' hook stop`);
 
     expect(planInstall({ environment, binarySource: binary }, ALL).operations).toEqual([]);
 
@@ -75,7 +76,7 @@ describe("install and uninstall", () => {
     expect(read(join(home, ".codex", "hooks.json"))).toBe(CODEX_HOOKS);
     expect(read(join(home, ".codex", "config.toml"))).toBe("[features]\nhooks = true\n");
     expect(read(join(home, "gitconfig"))).not.toContain("hooksPath");
-    expect(existsSync(join(home, ".config", "block-attribution", "bin"))).toBe(false);
+    expect(existsSync(join(home, ".local", "bin", "block-attribution"))).toBe(false);
   });
 
   test("planning writes nothing, which is what dry-run relies on", () => {
@@ -105,6 +106,21 @@ describe("install and uninstall", () => {
     for (const file of [".claude/settings.json", ".codex/hooks.json", ".codex/config.toml"]) {
       expect(existsSync(join(home, file))).toBe(false);
     }
+  });
+
+  test("moves an executable installed by an earlier build and repoints the hooks", async () => {
+    const { home, binary, environment } = setup();
+    await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);
+    const legacy = join(home, ".config", "block-attribution", "bin");
+    mkdirSync(legacy);
+    writeFileSync(join(legacy, "block-attribution"), "old");
+    const settingsPath = join(home, ".claude", "settings.json");
+    writeFileSync(settingsPath, read(settingsPath).replaceAll(join(home, ".local", "bin"), legacy));
+
+    await executeOperations(planInstall({ environment, binarySource: binary }, ALL).operations);
+    expect(existsSync(legacy)).toBe(false);
+    expect(read(settingsPath)).not.toContain(legacy);
+    expect(JSON.parse(read(settingsPath)).hooks.Stop).toHaveLength(1);
   });
 
   test("dropping an agent on reinstall removes its changes", async () => {
