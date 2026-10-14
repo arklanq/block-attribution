@@ -1,6 +1,6 @@
 # Manual installation
 
-The installer supports macOS. Use this guide on other systems, or when the installer fails. It makes the same changes by hand; skip any agent you don't use.
+The installer supports macOS, Claude Code and Codex. Use this guide on other systems, with other AI agents, or when the installer fails. It makes the same changes by hand; skip any agent you don't use.
 
 In the examples, `<executable>` is the full path of the `block-attribution` executable, for example `/home/me/.local/bin/block-attribution`. Agents and git call it by full path, so it doesn't need to be in `PATH`.
 
@@ -85,7 +85,18 @@ Edit `~/.codex/hooks.json` (or `$CODEX_HOME/hooks.json`). Create it with `{ "hoo
 
 Codex has no setting for attribution in its config files; it is an account setting on OpenAI's side. The hooks block it either way.
 
-### 4. Git hooks (optional, recommended)
+### 4. Other agents
+
+Any agent that can run a command before a tool call, or when it finishes a turn, can use the same hooks if it follows this contract (the one Claude Code and Codex use):
+
+| Hook | Command | Reads on stdin (JSON) | Blocks by |
+| :- | :- | :- | :- |
+| Before a tool call | `<executable> hook pre-tool-use` | `tool_name`: `"Bash"` for shell commands or `"mcp__<server>__<tool>"` for MCP tools; `tool_input`: for `Bash`, an object with the shell `command`; `cwd` | Exiting with code 2; the reason is on stderr |
+| End of a turn | `<executable> hook stop` | `cwd`; `stop_hook_active`, true when the agent is already continuing because of this hook | Printing `{"decision": "block", "reason": "…"}` on stdout and exiting with 0 |
+
+If the agent uses different field names, a small wrapper script that renames them before calling `<executable>` is enough. For an agent without hooks, the git hooks below still stop attributed commits and pushes, and you can run `<executable> check` in a repository to list unpushed commits and the open pull request that contain attribution.
+
+### 5. Git hooks (optional, recommended)
 
 These hooks stop commits and pushes that contain attribution, whichever tool makes them.
 
@@ -148,7 +159,7 @@ exit 0
 
 Replace `pre-commit` in the file name and in the script with the hook's name. Repositories with their own `core.hooksPath` (husky, lefthook) don't use the global directory at all.
 
-### 5. Check that it works
+### 6. Check that it works
 
 In a throwaway repository, a commit with an AI trailer must fail:
 
@@ -166,7 +177,8 @@ Undo only the steps you did.
 
 1. **Claude Code**: in `~/.claude/settings.json`, remove the `PreToolUse` and `Stop` entries whose command contains `block-attribution`, and delete `PreToolUse` or `Stop` if the array is empty. Remove `attribution` (or set your previous value) and `includeGitInstructions` if you added it.
 2. **Codex**: in `~/.codex/hooks.json`, remove the two entries whose command contains `block-attribution`. Their approvals in `~/.codex/config.toml` are tables named like `[hooks.state."/home/me/.codex/hooks.json:stop:1:0"]`; delete the two that belong to the removed entries. If you removed entries that were not last in their array, open `/hooks` in Codex afterwards and approve the hooks it asks about again.
-3. **Git**: if you created the hooks directory, run `git config --global --unset core.hooksPath` and delete the directory. If you added the scripts to an existing hooks directory, delete just those files.
-4. Delete the executable, and `~/.config/block-attribution` if it exists.
+3. **Other agents**: remove the hooks you added.
+4. **Git**: if you created the hooks directory, run `git config --global --unset core.hooksPath` and delete the directory. If you added the scripts to an existing hooks directory, delete just those files.
+5. Delete the executable, and `~/.config/block-attribution` if it exists.
 
 Start new agent sessions afterwards so they stop loading the removed hooks.
