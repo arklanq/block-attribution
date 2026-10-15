@@ -111,13 +111,15 @@ function printPlan(plan: Plan, dryRun: boolean): void {
   plan.warnings.forEach((warning) => console.log(`Warning: ${warning}`));
 }
 
-const CODEX_ACCOUNT_NOTE =
-  "Codex attribution is an account setting on OpenAI's side; a config file cannot turn it off. The hooks block it either way.";
+const CODEX_ATTRIBUTION_NOTES = {
+  enabled: "Codex attribution is controlled by OpenAI. The enabled hooks should block it in supported commit and PR workflows.",
+  declined: "Codex attribution is controlled by OpenAI. Consider enabling hooks to block it in supported commit and PR workflows.",
+};
 
 function finalNotes(plan: Plan, choices: InstallChoices): string[] {
   return [
     ...plan.notes,
-    ...(choices.agents.includes("codex") ? [CODEX_ACCOUNT_NOTE] : []),
+    ...(choices.agents.includes("codex") ? [choices.gitHooks ? CODEX_ATTRIBUTION_NOTES.enabled : CODEX_ATTRIBUTION_NOTES.declined] : []),
     "Start a new agent session so the hooks are loaded.",
   ];
 }
@@ -201,7 +203,7 @@ async function install(flags: Flags): Promise<void> {
   }
 
   if (interactive) {
-    note(summarize(plan).join("\n") || "Nothing to change.", "Changes");
+    note(summarize(plan).map((line) => `• ${line}`).join("\n") || "Nothing to change.", "Changes");
     plan.warnings.forEach((warning) => log.warn(warning));
     if (plan.operations.length > 0 && !exitIfCancelled(await confirm({ message: "Apply these changes?", initialValue: true }))) {
       cancel("Nothing was changed.");
