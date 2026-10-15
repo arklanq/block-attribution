@@ -121,6 +121,7 @@ function writeWithBackup(
       content: before,
       mode: 0o600,
       showDiff: false,
+      backupOf: path,
       description: `Back up ${path}`,
     });
   }

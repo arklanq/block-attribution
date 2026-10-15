@@ -10,6 +10,8 @@ export type WriteOperation = {
   mode?: number;
   /** False for copies such as backups, whose content dry-run should not print. */
   showDiff?: boolean;
+  /** The original path of a file this write backs up; summaries list backups apart from the changes. */
+  backupOf?: string;
   description: string;
 };
 

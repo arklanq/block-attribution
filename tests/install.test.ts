@@ -87,6 +87,14 @@ describe("install and uninstall", () => {
     expect(existsSync(join(home, ".config", "block-attribution"))).toBe(false);
   });
 
+  test("marks backups with the file they copy, so summaries can list them apart", () => {
+    const { home, binary, environment } = setup();
+    const backupsOf = (operations: ReturnType<typeof planInstall>["operations"]) =>
+      operations.flatMap((operation) => (operation.kind === "write" && operation.backupOf !== undefined ? [operation.backupOf] : []));
+    const original = [join(home, ".claude", "settings.json"), join(home, ".codex", "hooks.json"), join(home, ".codex", "config.toml")];
+    expect(backupsOf(planInstall({ environment, binarySource: binary }, ALL).operations)).toEqual(original);
+  });
+
   test("does not replace another global hooks directory", () => {
     const { home, binary, environment } = setup();
     writeFileSync(join(home, "gitconfig"), "[core]\n\thooksPath = /somewhere/else\n");

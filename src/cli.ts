@@ -94,21 +94,50 @@ function savedAnswers(environment: Environment): Partial<InstallChoices> {
   }
 }
 
-/** One line per step; several files written by the same step are listed once. */
-function summarize(plan: Plan): string[] {
-  return [...new Set(plan.operations.map((operation) => operation.description))];
+/** Groups the plan into changes, one line per step, and the files backed up before they change. */
+function summarize(plan: Plan): { changes: string[]; backups: string[] } {
+  const changes = new Set<string>();
+  const backups: string[] = [];
+  for (const operation of plan.operations) {
+    if (operation.kind === "write" && operation.backupOf !== undefined) {
+      backups.push(operation.backupOf);
+    } else {
+      changes.add(operation.description);
+    }
+  }
+  return { changes: [...changes], backups };
 }
 
-function printPlan(plan: Plan, dryRun: boolean): void {
+function backupsTitle(environment: Environment): string {
+  return `Backups (saved to ${appPaths(environment).backupsDir})`;
+}
+
+function printPlan(plan: Plan, dryRun: boolean, environment: Environment): void {
   if (plan.operations.length === 0) {
     console.log("Nothing to change.");
   }
   if (dryRun) {
     plan.operations.forEach((operation) => console.log(`Would: ${describeOperation(operation, true)}`));
   } else {
-    summarize(plan).forEach((line) => console.log(`- ${line}`));
+    const { changes, backups } = summarize(plan);
+    if (changes.length > 0) {
+      console.log(["Changes:", ...changes.map((line) => `- ${line}`)].join("\n"));
+    }
+    if (backups.length > 0) {
+      console.log([`${backupsTitle(environment)}:`, ...backups.map((path) => `- ${path}`)].join("\n"));
+    }
   }
   plan.warnings.forEach((warning) => console.log(`Warning: ${warning}`));
+}
+
+/** The interactive counterpart of printPlan, shared by install and uninstall. */
+function notePlan(plan: Plan, environment: Environment): void {
+  const { changes, backups } = summarize(plan);
+  note(changes.map((line) => `• ${line}`).join("\n") || "Nothing to change.", "Changes");
+  if (backups.length > 0) {
+    note(backups.map((path) => `• ${path}`).join("\n"), backupsTitle(environment));
+  }
+  plan.warnings.forEach((warning) => log.warn(warning));
 }
 
 const CODEX_ATTRIBUTION_NOTES = {
@@ -193,7 +222,7 @@ async function install(flags: Flags): Promise<void> {
   const plan = planInstall({ environment, binarySource: selfExecutable(flags) }, choices);
 
   if (flags.dryRun) {
-    printPlan(plan, true);
+    printPlan(plan, true, environment);
     finalNotes(plan, choices).forEach((line) => console.log(`Note: ${line}`));
     const warning = pathWarning(environment);
     if (warning) {
@@ -203,8 +232,7 @@ async function install(flags: Flags): Promise<void> {
   }
 
   if (interactive) {
-    note(summarize(plan).map((line) => `• ${line}`).join("\n") || "Nothing to change.", "Changes");
-    plan.warnings.forEach((warning) => log.warn(warning));
+    notePlan(plan, environment);
     if (plan.operations.length > 0 && !exitIfCancelled(await confirm({ message: "Apply these changes?", initialValue: true }))) {
       cancel("Nothing was changed.");
       process.exit(1);
@@ -222,7 +250,7 @@ async function install(flags: Flags): Promise<void> {
     return;
   }
 
-  printPlan(plan, false);
+  printPlan(plan, false, environment);
   await executeOperations(plan.operations);
   finalNotes(plan, choices).forEach((line) => console.log(`Note: ${line}`));
   const warning = pathWarning(environment);
@@ -235,15 +263,26 @@ async function install(flags: Flags): Promise<void> {
 async function uninstall(flags: Flags): Promise<void> {
   const environment = defaultEnvironment();
   const plan = planUninstall({ environment });
-  printPlan(plan, flags.dryRun);
-  if (flags.dryRun) {
-    return;
-  }
-  if (!flags.yes && process.stdin.isTTY === true && plan.operations.length > 0) {
-    if (!exitIfCancelled(await confirm({ message: "Remove Block Attribution?", initialValue: true }))) {
+
+  if (!flags.dryRun && !flags.yes && process.stdin.isTTY === true) {
+    intro("Block Attribution");
+    notePlan(plan, environment);
+    if (plan.operations.length > 0 && !exitIfCancelled(await confirm({ message: "Remove Block Attribution?", initialValue: true }))) {
       cancel("Nothing was changed.");
       process.exit(1);
     }
+    const progress = spinner();
+    progress.start("Removing Block Attribution");
+    await executeOperations(plan.operations);
+    progress.stop("Changes applied");
+    plan.notes.forEach((line) => log.info(line));
+    outro("Block Attribution was removed.");
+    return;
+  }
+
+  printPlan(plan, flags.dryRun, environment);
+  if (flags.dryRun) {
+    return;
   }
   await executeOperations(plan.operations);
   plan.notes.forEach((line) => console.log(`Note: ${line}`));
