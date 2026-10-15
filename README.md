@@ -1,80 +1,58 @@
 # Block Attribution
 
-Block Attribution keeps AI attribution out of your git commits and pull requests: `Co-authored-by` trailers, "Generated with Claude Code / Codex" lines, agent session links and Claude Projects markers.
+Blocks AI attribution in Git commits and pull requests: AI co-author trailers, generated-by footers, session links and Claude Projects markers. Human co-authors remain allowed.
 
-It turns attribution off in Claude Code, and installs hooks that reject a commit or pull request that still contains it, with a message that tells the agent what to remove. It works with Claude Code and Codex, in the terminal and in their desktop apps, and other agents can be [connected by hand](MANUAL_INSTALLATION.md#4-other-agents).
+## Install
 
-## Installation
-
-The installer supports macOS with Claude Code and Codex. On other systems, with other AI agents, or if the installer fails, follow the [manual installation guide](MANUAL_INSTALLATION.md), which also covers uninstalling by hand.
-
-On macOS:
+For macOS and Linux, with Claude Code and Codex. Windows is not supported in v1.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arklanq/block-attribution/main/install.sh | bash
 ```
 
-The script downloads the executable for your platform from GitHub Releases, verifies its SHA-256 checksum and starts a short wizard. The wizard shows which agents it found and asks:
+The installer verifies the release checksum, asks which detected agents to configure and recommends optional global Git hooks. Start a new agent session afterwards. For other agents or installation problems, see [manual installation](MANUAL_INSTALLATION.md).
 
-1. Which agents to configure.
-2. Whether to install global git hooks (recommended).
-
-Preview the changes, or install without questions:
+To preview changes, append `-s -- --dry-run` after `bash`. For unattended installation, use `-s -- --yes`; available flags include `--skip-claude`, `--skip-codex` and `--no-git-hooks`. Flags override saved Git-hook preferences, then defaults.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/arklanq/block-attribution/main/install.sh | bash -s -- --dry-run
-curl -fsSL https://raw.githubusercontent.com/arklanq/block-attribution/main/install.sh | bash -s -- --yes --skip-codex --no-git-hooks
-```
-
-Without a terminal, or with `--yes`, the installer uses flags first, then your previous answers, then the defaults. Run it again at any time to change the answers.
-
-Remove everything it changed:
-
-```bash
+block-attribution status
+block-attribution check       # Check this repository.
 block-attribution uninstall
 ```
 
-## What it changes
+## Configuration
 
-| Where | Change |
+| Location | Changes |
 | :- | :- |
-| `~/.claude/settings.json` | `attribution` set to `{ "commit": "", "pr": "", "sessionUrl": false }`; `PreToolUse` and `Stop` hooks |
-| `~/.codex/hooks.json` | `PreToolUse` and `Stop` hooks, appended after your own hooks |
-| `~/.codex/config.toml` | Trust entries for those two hooks, so Codex runs them without asking |
-| Global git config | `core.hooksPath` pointing at `~/.config/block-attribution/git-hooks`, only when it is not set already |
-| `~/.local/bin/block-attribution` | The executable (`BLOCK_ATTRIBUTION_BIN_DIR` changes the directory). The installer warns when the directory is not in `PATH`; the hooks call it by full path, so they work either way |
-| `~/.config/block-attribution/` | Git hooks, saved answers, an install record and backups of every file it edited |
+| `~/.claude/settings.json` | Disables built-in attribution; adds `PreToolUse` and `Stop` hooks. |
+| `~/.codex/hooks.json`, `~/.codex/config.toml` | Appends agent hooks, enables them and records their trust. |
+| Global Git config | Sets `core.hooksPath` only when enabled and no other global hooks directory is configured. |
+| `~/.local/bin/block-attribution` | Executable; hooks use its absolute path, so they work without this directory in `PATH`. |
+| `~/.config/block-attribution/` | Git hooks, saved answers, uninstall manifest and config backups. |
 
-`CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_CONFIG_HOME` are respected.
+Overrides: `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `BLOCK_ATTRIBUTION_BIN_DIR` and `XDG_CONFIG_HOME`.
 
-## How it blocks attribution
-
-- **Agent hooks, before a command runs.** `git commit`, `git push`, `gh pr create/edit` and GitHub MCP tools are checked, including message files passed with `-F` or `--body-file`. `--no-verify` and `-c core.hooksPath=…` are refused, because they would skip the git hooks.
-- **Git hooks.** `commit-msg` rejects the message and `pre-push` rejects commits that would be pushed. They also run each repository's own `.git/hooks`, which a global `core.hooksPath` would otherwise skip.
-- **Agent hooks, when the agent finishes.** Unpushed commits from the last 12 hours and the current branch's open pull request are checked, and the agent is asked to fix them.
-
-The full list of patterns is in [src/rules.ts](src/rules.ts). Add your own regular expressions in `~/.config/block-attribution/config.json`:
+To extend the [built-in rules](src/rules.ts), merge this into `~/.config/block-attribution/config.json`:
 
 ```json
 { "extraPatterns": ["assisted-by:"] }
 ```
 
-## Limits
+## Coverage and limits
 
-- Codex attribution is an account setting on OpenAI's side. No config file turns it off, but the hooks block it.
-- Repositories with their own `core.hooksPath` (husky, lefthook) don't run the global git hooks. The agent hooks still apply.
-- Claude Code cloud sessions (claude.ai/code) don't read your local settings.
-- Pull requests edited in the GitHub web interface are not checked.
-
-[docs/verification.md](docs/verification.md) lists how each agent behaves and how it was checked.
+- Agent hooks check Git and GitHub CLI/MCP calls, including message files, and reject hook-bypass flags. Global `commit-msg` and `pre-push` hooks check commits and preserve repository hooks.
+- At turn end, `Stop` checks up to 50 unpushed commits from the last 12 hours and the branch's open PR. `check` runs the same checks; PR inspection requires authenticated `gh` access.
+- Codex attribution follows OpenAI's server policy; local settings cannot disable it. Enabled hooks should block it in supported workflows. Codex desktop hook execution remains unverified.
+- Repository-local `core.hooksPath` overrides global hooks. Commands outside agent hooks can bypass Git hooks. Indirect commands may evade agent checks.
+- Local hooks do not cover cloud sessions, GitHub web edits or later server additions. `commit-tree` snapshots are checked only if pushed.
 
 ## Development
 
 ```bash
 bun install
-bun run check         # typecheck, tests, install.sh syntax
-bun run build:binary  # release/block-attribution for this machine
+bun run check         # Types, tests and installer syntax.
+bun run build:binary  # release/block-attribution for this machine.
 ./release/block-attribution install --dry-run
 ```
 
-Pushing a `v*` tag builds the macOS and Linux executables with checksums and publishes a GitHub release.
+A `v*` tag publishes macOS/Linux binaries and checksums. See [architecture](docs/architecture.md) and [verification evidence](docs/verification.md).
