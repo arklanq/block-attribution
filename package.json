@@ -2,7 +2,7 @@
   "name": "block-attribution",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.5",
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
@@ -11,7 +11,7 @@
     "release:build": "bun run scripts/build-release.ts"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
+    "@types/bun": "^1.4.5",
     "typescript": "^7.0.2"
   },
   "dependencies": {
